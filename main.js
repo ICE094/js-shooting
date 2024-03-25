@@ -77,6 +77,79 @@ function drawBalls() {
   }
 }
 
+function generateCoords() {
+  do {
+    let X = Math.random() * (canvas.width - 80) + 80;
+  } while (X + 120 > canvas.width);
+
+  let Y = Math.random() * (-260 - 60) - 60;
+  return [X, Y];
+}
+
+function distanceCheck(X1, Y1, X2, Y2) {
+  var distance = Math.sqrt(Math.pow(X1 - X2, 2) + Math.pow(Y1 - Y2, 2));
+  if (distance > 140 && Math.abs(Y1 - Y2) > 40) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+function blockDistanceChecker(X, Y) {
+  if (blocks.length == 0) {
+    return false;
+  }
+
+  var check = false;
+  for (i = 0; i < blocks.length; i++) {
+    if (distanceCheck(X, Y, blocks[i].get("X"), blocks[i].get("Y"))) {
+      check = check || false;
+    } else {
+      check = check || true;
+    }
+  }
+
+  if (!check) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
+function drawNewBlock() {
+  do {
+    let coords = generateCoords();
+    let X = coords[0];
+    let Y = coords[1];
+  } while (blockDistanceChecker(X, Y));
+
+  let width = 40;
+  let height = 60;
+
+  let block = new Map();
+  block.set("X", X);
+  block.set("Y", Y);
+  block.set("width", width);
+  block.set("height", height);
+
+  blocks.push(block);
+}
+
+function drawBlocks() {
+  for (let i = 0; i < blocks.length; i++) {
+    ctx.beginPath();
+    ctx.rect(
+      blocks[i].get("X"),
+      blocks[i].get("Y"),
+      blocks[i].get("width"),
+      blocks[i].get("height")
+    );
+    ctx.fillStyle = "green";
+    ctx.fill();
+    ctx.closePath();
+  }
+}
+
 function moverFunc() {
   for (let i = 0; i < blocks.length; i++) {
     blocks[i].set("Y", blocks[i].get("Y") + tank_speed);
@@ -94,24 +167,55 @@ function moveBalls() {
   }
 }
 
+function tank_block_collision() {
+  for (i = 0; i < blocks.length; i++) {
+    var conflict_X = false;
+    var conflict_Y = false;
+
+    if (
+      tank.get("X") + tank_width > blocks[i].get("X") &&
+      tank.get("X") < blocks[i].get("X") + 40
+    ) {
+      conflict_X = conflict_X || true;
+    }
+    if (
+      tank.get("Y") < blocks[i].get("Y") + 60 &&
+      tank.get("Y") > blocks[i].get("Y")
+    ) {
+      conflict_Y = conflict_Y || true;
+    }
+    if (conflict_X && conflict_Y) {
+      tank_block_collision_bool = false;
+      player_lives -= 1;
+      return;
+    }
+  }
+  tank_block_collision_bool = true;
+}
+
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawTank();
   drawBalls();
+  drawBlocks();
   moveBalls();
-
+  tank_block_collision();
+  moverFunc();
   if (
     space_pressed &&
     balls.length < 10 &&
-    performance.now() - since_last_fire > 500
+    performance.now() - since_last_fire > 400
   ) {
     drawNewBall(tank.get("X") + 15, tank.get("Y") - 30);
   }
   if (right_pressed && tank.get("X") + tank_width < canvas.width) {
-    tank.set("X", tank.get("X") + 3);
+    tank.set("X", tank.get("X") + canvas.width / 120);
   }
   if (left_pressed && tank.get("X") > 0) {
-    tank.set("X", tank.get("X") - 3);
+    tank.set("X", tank.get("X") - canvas.width / 120);
+  }
+  if (blocks.length < 3) {
+    drawNewBlock();
   }
   requestAnimationFrame(draw);
 }
